@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calgary Interactive Map</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <style>
+        #map { height: 90vh; }
+        .button-container { position: absolute; top: 10px; left: 50px; z-index: 1000; }
+        .button { padding: 10px; margin: 2px; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="button-container">
+    <button id="simplify" class="button">Simplify</button>
+    <button id="remove" class="button">Remove</button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf"></script>
+<script>
+    var map = L.map('map').setView([51.0447, -114.0719], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data &copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var drawnPolyline = null;
+    var simplifiedLayer = L.layerGroup().addTo(map);
+    var points = [];
+
+    // Listen for map clicks to draw polyline
+    map.on('click', function(e) {
+        points.push([e.latlng.lat, e.latlng.lng]);
+        updatePolyline();
+    });
+
+    function updatePolyline() {
+        if (drawnPolyline) {
+            map.removeLayer(drawnPolyline);
+        }
+        drawnPolyline = L.polyline(points, {color: 'red'}).addTo(map);
+    }
+
+    document.getElementById('simplify').addEventListener('click', function() {
+        if (!drawnPolyline || points.length < 2) return;
+
+        var simplifiedGeoJSON = turf.simplify(turf.lineString(points), {tolerance: 0.001, highQuality: false});
+        simplifiedLayer.clearLayers(); // Clear previous simplified lines
+        L.geoJSON(simplifiedGeoJSON, {
+            style: function() {
+                return {color: 'blue'};
+            }
+        }).addTo(simplifiedLayer);
+    });
+
+    document.getElementById('remove').addEventListener('click', function() {
+        if (drawnPolyline) {
+            map.removeLayer(drawnPolyline);
+            drawnPolyline = null;
+        }
+        simplifiedLayer.clearLayers();
+        points = [];
+    });
+</script>
+
+</body>
+</html>
